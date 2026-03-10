@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hospital Management System with AI Agent</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{font-family:Arial;margin:0;background:linear-gradient(rgba(255,255,255,0.9),rgba(255,255,255,0.9)),url("https://images.unsplash.com/photo-1586773860418-d37222d8fce3") no-repeat center center fixed;background-size:cover;}
+header{background:#007bff;color:white;padding:20px;text-align:center;font-size:24px;font-weight:bold;}
+h2{text-align:center}
+button{padding:8px 15px;border:none;background:#007bff;color:white;border-radius:5px;cursor:pointer;margin-top:10px;}
+button:hover{background:#0056b3}
+input{padding:8px;margin:5px;border-radius:5px;border:1px solid #ccc;width:90%;}
+#authContainer{display:flex;justify-content:center;align-items:center;height:100vh;}
+#authForm{background:white;padding:30px;width:340px;border-radius:15px;box-shadow:0 4px 10px rgba(0,0,0,0.2);text-align:center;}
+a{cursor:pointer;color:#007bff;}
+.dashboard{display:flex;flex-wrap:wrap;justify-content:center;gap:20px;padding:30px;}
+.card{background:white;width:170px;height:160px;border-radius:15px;display:flex;flex-direction:column;justify-content:center;align-items:center;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,0.2);transition:0.3s;}
+.card:hover{transform:translateY(-6px);box-shadow:0 8px 20px rgba(0,0,0,0.3);}
+.card i{font-size:40px;color:#007bff;margin-bottom:10px;}
+table{width:100%;border-collapse:collapse;margin-top:20px;}
+table,th,td{border:1px solid #ddd}
+th{background:#007bff;color:white;padding:10px;}
+td{padding:10px;}
+td[contenteditable=true]{background:#f9f9f9}
+td.low-stock{color:red;font-weight:bold;}
+.modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.6);}
+.modal-content{background:white;margin:4% auto;padding:20px;width:90%;max-height:85%;overflow:auto;border-radius:10px;position:relative;}
+.close{position:absolute;right:20px;top:10px;font-size:28px;cursor:pointer;}
+#chartContainer{width:80%;margin:30px auto;background:white;padding:20px;border-radius:15px;box-shadow:0 4px 10px rgba(0,0,0,0.2);}
+#profile{text-align:center;padding:10px;}
+#aiAgent{width:80%;margin:20px auto;background:#fff3cd;border-left:6px solid #ffc107;padding:15px;border-radius:10px;box-shadow:0 4px 10px rgba(0,0,0,0.2);position:relative;}
+#aiAgent i{position:absolute;right:15px;top:15px;font-size:24px;cursor:pointer;color:#ffc107;}
+#aiChat{margin-top:15px;background:#fff;border:1px solid #ccc;padding:10px;border-radius:5px;max-height:150px;overflow-y:auto;}
+#aiInput{width:100%;padding:8px;margin-top:5px;border-radius:5px;border:1px solid #ccc;}
+#aiWarnings{margin-top:10px;background:#fff;border:1px solid #ffc107;padding:10px;border-radius:5px;font-size:14px;}
+</style>
+</head>
+
+<body>
+
+<div id="authContainer">
+<div id="authForm">
+<h2 id="formTitle">Hospital Login</h2>
+
+<div id="loginForm">
+<input id="loginUsername" placeholder="Username">
+<input id="loginPassword" type="password" placeholder="Password">
+<button onclick="login()">Login</button>
+<p>Don't have an account? <a onclick="showRegister()">Register</a></p>
+</div>
+
+<div id="registerForm" style="display:none">
+<input id="regName" placeholder="Full Name">
+<input id="regUsername" placeholder="Username">
+<input id="regPassword" type="password" placeholder="Password">
+<button onclick="register()">Register</button>
+<p>Already have account? <a onclick="showLogin()">Login</a></p>
+</div>
+</div>
+</div>
+
+<div id="dashboard" style="display:none">
+<header>Hospital Management Dashboard</header>
+<div id="profile"><h3 id="profileName">Welcome</h3></div>
+
+<div class="dashboard">
+<div class="card" onclick="openModal('patients')"><i class="fas fa-user-injured"></i><span>Patient Records</span></div>
+<div class="card" onclick="openModal('doctors')"><i class="fas fa-user-md"></i><span>Doctors</span></div>
+<div class="card" onclick="openModal('staff')"><i class="fas fa-users"></i><span>Staff</span></div>
+<div class="card" onclick="openModal('medicine')"><i class="fas fa-pills"></i><span>Medicine Database</span></div>
+<div class="card" onclick="openModal('appointments')"><i class="fas fa-calendar-check"></i><span>Appointments</span></div>
+<div class="card" onclick="openModal('lab')"><i class="fas fa-vials"></i><span>Lab Reports</span></div>
+<div class="card" onclick="openModal('insurance')"><i class="fas fa-file-medical"></i><span>Insurance</span></div>
+<div class="card" onclick="openModal('machines')"><i class="fas fa-cogs"></i><span>Machines</span></div>
+</div>
+
+<div id="chartContainer">
+<h2>Monthly Patient Trend</h2>
+<canvas id="patientChart"></canvas>
+</div>
+
+<div id="aiAgent">
+<i class="fas fa-robot" title="Run AI system scan" onclick="manualAIScan()"></i>
+<h3>🤖 AI Hospital Assistant</h3>
+<p id="aiStatus">AI System Ready</p>
+<button onclick="manualAIScan()">Run AI Low Stock Test</button>
+<div id="aiWarnings"></div>
+<div id="aiChat"></div>
+<input id="aiInput" placeholder="Ask AI about hospital system..." onkeypress="if(event.key==='Enter'){aiAsk()}">
+</div>
+
+<div id="modal" class="modal">
+<div class="modal-content">
+<span class="close" onclick="closeModal()">&times;</span>
+<div id="modalBody"></div>
+</div>
+</div>
+</div>
+
+<script>
+let users=[{username:"admin",password:"admin123",name:"Administrator"}];
+let firstLoginAlert=true;
+
+function showRegister(){loginForm.style.display="none";registerForm.style.display="block";formTitle.innerText="Register";}
+function showLogin(){loginForm.style.display="block";registerForm.style.display="none";formTitle.innerText="Hospital Login";}
+function register(){let name=regName.value,username=regUsername.value,password=regPassword.value;if(!name||!username||!password){alert("Fill all fields");return;}users.push({username,password,name});alert("Registration Successful");showLogin();}
+function login(){let username=loginUsername.value,password=loginPassword.value;let user=users.find(u=>u.username==username&&u.password==password);if(user){authContainer.style.display="none";dashboard.style.display="block";profileName.innerText="Welcome "+user.name;}else{alert("Invalid Login");}}
+
+/* DATA */
+let patients=[["P001","John Smith",45,"Heart Checkup","Dr. Alan"],["P002","Mary Johnson",32,"Fever","Dr. Ravi"]];
+let doctors=[["D001","Dr. Alan","Cardiology"],["D002","Dr. Ravi","General Medicine"]];
+let staff=[["S001","Emma","Nurse"],["S002","Mike","Receptionist"]];
+let medicine=[["MD001","Paracetamol",120],["MD002","Ibuprofen",30]];
+let appointments=[["A001","John Smith","Dr. Alan","2026-03-10"]];
+let labReports=[["L001","John Smith","Blood Test","Normal","2026-03-05"]];
+let insurance=[["I001","John Smith","ABC Health","Policy123"]];
+let machines=[["M001","MRI Scanner","Operational"],["M002","X-Ray Machine","Maintenance"]];
+
+function buildTable(headers,data,type){
+  let html="<table><tr>";headers.forEach(h=>html+="<th>"+h+"</th>");html+="</tr>";
+  data.forEach(r=>{
+    html+="<tr>";
+    r.forEach((c,i)=>{
+      let tdClass="";
+      if(type=="medicine" && i==2 && parseInt(c)<50) tdClass="low-stock";
+      html+=`<td contenteditable='true' class='${tdClass}'>${c}</td>`;
+    });
+    html+="</tr>";
+  });
+  html+="</table>";
+  return html;
+}
+
+function addRecord(type){
+  let inputs=document.querySelectorAll(".addInput"),values=[];
+  inputs.forEach(i=>values.push(i.value));
+  if(values.includes("")){alert("Fill all fields");return;}
+  if(type=="patients")patients.push(values);
+  if(type=="doctors")doctors.push(values);
+  if(type=="staff")staff.push(values);
+  if(type=="medicine"){updateMedicineStock(values);}
+  if(type=="appointments")appointments.push(values);
+  if(type=="lab")labReports.push(values);
+  if(type=="insurance")insurance.push(values);
+  if(type=="machines")machines.push(values);
+  openModal(type);
+}
+
+function updateMedicineStock(newEntry){
+  let index=medicine.findIndex(m=>m[0]===newEntry[0]);
+  if(index>=0){medicine[index][2]=parseInt(medicine[index][2])+parseInt(newEntry[2]);}
+  else {medicine.push([newEntry[0],newEntry[1],parseInt(newEntry[2])]);}
+}
+
+let modal=document.getElementById("modal");
+function closeModal(){modal.style.display="none";}
+window.onclick=function(e){if(e.target==modal)modal.style.display="none";}
+
+function openModal(type){
+  modal.style.display="block";
+  if(type=="patients"){modalBody.innerHTML=`<h2>Patient Records</h2><input class="addInput" placeholder="ID"><input class="addInput" placeholder="Name"><input class="addInput" placeholder="Age"><input class="addInput" placeholder="Issue"><input class="addInput" placeholder="Doctor"><button onclick="addRecord('patients')">Add Patient</button>${buildTable(["ID","Name","Age","Issue","Doctor"],patients)}`;}
+  if(type=="doctors"){modalBody.innerHTML=`<h2>Doctors</h2><input class="addInput" placeholder="ID"><input class="addInput" placeholder="Name"><input class="addInput" placeholder="Department"><button onclick="addRecord('doctors')">Add Doctor</button>${buildTable(["ID","Name","Department"],doctors)}`;}
+  if(type=="staff"){modalBody.innerHTML=`<h2>Staff</h2><input class="addInput" placeholder="ID"><input class="addInput" placeholder="Name"><input class="addInput" placeholder="Role"><button onclick="addRecord('staff')">Add Staff</button>${buildTable(["ID","Name","Role"],staff)}`;}
+  if(type=="medicine"){modalBody.innerHTML=`<h2>Medicine Database</h2><input class="addInput" placeholder="ID"><input class="addInput" placeholder="Medicine"><input class="addInput" placeholder="Stock"><button onclick="addRecord('medicine')">Add Medicine</button>${buildTable(["ID","Medicine","Stock"],medicine,"medicine")}`;}
+  if(type=="appointments"){modalBody.innerHTML=`<h2>Appointments</h2><input class="addInput" placeholder="ID"><input class="addInput" placeholder="Patient"><input class="addInput" placeholder="Doctor"><input class="addInput" placeholder="Date"><button onclick="addRecord('appointments')">Add Appointment</button>${buildTable(["ID","Patient","Doctor","Date"],appointments)}`;}
+  if(type=="lab"){modalBody.innerHTML=`<h2>Lab Reports</h2><input class="addInput" placeholder="ID"><input class="addInput" placeholder="Patient"><input class="addInput" placeholder="Test"><input class="addInput" placeholder="Result"><input class="addInput" placeholder="Date"><button onclick="addRecord('lab')">Add Report</button>${buildTable(["ID","Patient","Test","Result","Date"],labReports)}`;}
+  if(type=="insurance"){modalBody.innerHTML=`<h2>Insurance</h2><input class="addInput" placeholder="ID"><input class="addInput" placeholder="Patient"><input class="addInput" placeholder="Provider"><input class="addInput" placeholder="Policy"><button onclick="addRecord('insurance')">Add Insurance</button>${buildTable(["ID","Patient","Provider","Policy"],insurance)}`;}
+  if(type=="machines"){modalBody.innerHTML=`<h2>Machines</h2><input class="addInput" placeholder="ID"><input class="addInput" placeholder="Machine"><input class="addInput" placeholder="Status"><button onclick="addRecord('machines')">Add Machine</button>${buildTable(["ID","Machine","Status"],machines)}`;}
+}
+
+/* CHART */
+const ctx=document.getElementById("patientChart");
+new Chart(ctx,{type:"line",data:{labels:["Jan","Feb","Mar","Apr","May","Jun"],datasets:[{label:"Patients",data:[120,150,180,160,210,240],borderColor:"#007bff",backgroundColor:"rgba(0,123,255,0.2)",fill:true}]}});
+
+/* AI AGENT */
+const aiStatus=document.getElementById("aiStatus");
+const aiWarnings=document.getElementById("aiWarnings");
+const aiChat=document.getElementById("aiChat");
+const aiInput=document.getElementById("aiInput");
+
+function runAIScan(){
+  let warnings=[];
+  medicine.forEach(m=>{if(parseInt(m[2])<50)warnings.push("Low medicine stock: "+m[1]+" ("+m[2]+")");});
+  machines.forEach(m=>{if(m[2].toLowerCase().includes("maintenance"))warnings.push("Machine under maintenance: "+m[1]);});
+  if(warnings.length>0){aiStatus.innerText="⚠ Issues detected";aiWarnings.innerHTML="<b>AI Alerts:</b><br>"+warnings.join("<br>");}else{aiStatus.innerText="✅ System Healthy";aiWarnings.innerHTML="No issues detected";}
+  // update medicine table colors in modal if open
+  if(modal.style.display=="block" && modalBody.innerHTML.includes("Medicine Database")){
+    openModal("medicine");
+  }
+}
+
+function manualAIScan(){runAIScan();}
+
+function aiAsk(){let q=aiInput.value.toLowerCase(),answer="";if(q.includes("patient"))answer="Total Patients: "+patients.length;else if(q.includes("doctor"))answer="Total Doctors: "+doctors.length;else if(q.includes("staff"))answer="Total Staff: "+staff.length;else if(q.includes("medicine"))answer="Medicine entries: "+medicine.length;else if(q.includes("appointment"))answer="Appointments: "+appointments.length;else if(q.includes("machine"))answer="Machines registered: "+machines.length;else if(q.includes("lab"))answer="Lab reports: "+labReports.length;else if(q.includes("insurance"))answer="Insurance records: "+insurance.length;else answer="I can answer questions about patients, doctors, staff, medicines, appointments, lab reports, insurance, machines, and this website.";aiChat.innerHTML+="<p><b>You:</b> "+q+"</p><p><b>AI:</b> "+answer+"</p>";aiChat.scrollTop=aiChat.scrollHeight;aiInput.value="";}
+</script>
+
+</body>
+</html>
